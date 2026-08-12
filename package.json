@@ -16,7 +16,7 @@
     "@vercel/blob": "^2.8.0"
   },
   "devDependencies": {
-    "typescript": "^7.0.2",
-    "vercel": "^58.9.4"
+    "typescript": "6.0.3",
+    "vercel": "58.7.1"
   }
 }
