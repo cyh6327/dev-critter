@@ -1,0 +1,22 @@
+{
+  "name": "dev-critter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "dev-critter": "dist/src/cli.js"
+  },
+  "scripts": {
+    "build:cli": "tsc",
+    "typecheck": "tsc --noEmit",
+    "cli": "node dist/src/cli.js",
+    "dev:vercel": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vercel": "^58.9.4"
+  }
+}
