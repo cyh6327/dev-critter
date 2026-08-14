@@ -1,6 +1,8 @@
 node_modules/
 dist/
 AGENTS.md
+AGENT-MEMORY.md
+TROUBLESHOOTING.md
 docs/IMPLEMENTATION-BUILDUP.md
 .vercel
 .env*
