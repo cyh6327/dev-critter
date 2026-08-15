@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "preview": "npm run build:cli && node scripts/render-preview.ts",
     "cli": "node dist/src/cli.js",
-    "dev:vercel": "vercel dev"
+    "dev:vercel": "vercel dev",
+    "vercel:dev:debug": "vercel dev --debug"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0"

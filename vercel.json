@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/specimen.svg",
+      "destination": "/api/specimen"
+    }
+  ]
+}
