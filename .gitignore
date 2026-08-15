@@ -1,8 +1,11 @@
 node_modules/
 dist/
+preview/
 AGENTS.md
 AGENT-MEMORY.md
-TROUBLESHOOTING.md
+DEVELOPMENT-NOTES.md
 docs/IMPLEMENTATION-BUILDUP.md
+docs/ASCII-ANIMATION-DIRECTION.md
+docs/TEXT-HUMOR-STYLE.md
 .vercel
 .env*
