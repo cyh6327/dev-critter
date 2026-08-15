@@ -614,7 +614,7 @@ https://dev-critter.vercel.app
 ```text
 Local CLI
     │
-    │ POST /status
+    │ POST /api/status
     ▼
          Vercel
 ┌─────────────────────────┐
@@ -633,7 +633,7 @@ Local CLI
 GitHub README
 ```
 
-상태 변경 시 로컬 CLI가 Vercel의 `POST /status` endpoint에 요청을 보내고, Function은 최신 관찰 상태를 Private Vercel Blob의 `state.json`에 저장한다.
+상태 변경 시 로컬 CLI가 Vercel의 `POST /api/status` endpoint에 요청을 보내고, Function은 최신 관찰 상태를 Private Vercel Blob의 `state.json`에 저장한다.
 
 저장 데이터는 현재 상태와 마지막 변경 시각만 가진다.
 
@@ -655,7 +655,7 @@ https://dev-critter.vercel.app/specimen.svg
 Private Blob 자체는 README에 직접 노출하지 않는다. 상태 저장은 서버 내부 책임으로 두고, 외부에는 상태 변경 endpoint와 공개 SVG endpoint만 제공한다.
 
 ```text
-POST /status
+POST /api/status
     → current state 갱신
 
 GET /specimen.svg

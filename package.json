@@ -9,6 +9,7 @@
   "scripts": {
     "build:cli": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "npm run build:cli && node --test --experimental-test-module-mocks \"tests/*.test.mjs\"",
     "preview": "npm run build:cli && node scripts/render-preview.ts",
     "cli": "node dist/src/cli.js",
     "dev:vercel": "vercel dev",

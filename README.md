@@ -71,7 +71,7 @@ When running locally, Vercel provides a temporary `VERCEL_OIDC_TOKEN` through th
 
 ### 4. Generate a status token
 
-`POST /status` is protected by a separate `STATUS_TOKEN` so that only an authorized local CLI can update the displayed status.
+`POST /api/status` is protected by a separate `STATUS_TOKEN` so that only an authorized local CLI can update the displayed status.
 
 Generate a random token:
 
@@ -113,6 +113,13 @@ npx vercel env pull .env.local
 
 This creates a local `.env.local` containing the environment values required for development, including the Vercel-managed OIDC token and the configured `STATUS_TOKEN`.
 
+The CLI reads `STATUS_TOKEN` from its process environment and does not load `.env.local` automatically. For repository-local execution, load the file through Node.js:
+
+```bash
+npm run build:cli
+node --env-file=.env.local dist/src/cli.js focus
+```
+
 Make sure `.env.local` is excluded from Git.
 
 ```gitignore
@@ -128,7 +135,7 @@ Local CLI
     │
     │ STATUS_TOKEN
     ▼
-POST /status
+POST /api/status
     │
     │ Vercel OIDC
     ▼
@@ -138,6 +145,7 @@ Private Vercel Blob
 | Variable | Purpose | Managed by |
 |---|---|---|
 | `STATUS_TOKEN` | Authorizes status updates from the local CLI | User |
+| `DEV_CRITTER_URL` | Optionally overrides the API origin; defaults to `https://dev-critter.vercel.app` | User |
 | `VERCEL_OIDC_TOKEN` | Authenticates the Vercel project when accessing Blob | Vercel |
 
 `VERCEL_OIDC_TOKEN` is temporary and managed by Vercel.
