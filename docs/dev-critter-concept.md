@@ -4,7 +4,7 @@
 
 **Dev Critter**는 GitHub 프로필 README를 정적인 자기소개가 아니라 **개발자의 가장 최근 상태가 반영되는 작은 공개 작업실**처럼 만든다.
 
-사용자는 로컬 CLI에서 상태를 변경한다.
+사용자는 로컬 CLI 또는 선택형 Desktop Tray에서 상태를 변경한다.
 
 ```bash
 dev-critter focus
@@ -12,12 +12,14 @@ dev-critter break
 dev-critter offline
 ```
 
+Desktop Tray에서는 `Focus`, `Break`, `Offline` 메뉴를 선택한다. 두 클라이언트는 동일한 `POST /api/status` endpoint와 `STATUS_TOKEN` 인증 규칙을 사용한다.
+
 현재 상태는 사용자가 다른 상태로 직접 변경할 때까지 유지된다.
 
-MVP의 기본 전달 구조는 **GitHub 저장소의 SVG를 매번 커밋하는 방식이 아니라, README가 외부의 고정 SVG URL을 참조하는 방식**으로 잡는다.
+MVP의 기본 전달 구조는 **GitHub 저장소의 SVG를 매번 커밋하는 방식이 아니라, README가 외부의 고정 SVG URL을 참조하는 방식**을 사용한다.
 
 ```text
-CLI에서 상태 변경
+CLI 또는 Tray에서 상태 변경
 → 외부 상태 저장소의 current state 갱신
 → README는 항상 같은 SVG URL 참조
 → SVG endpoint가 가장 최근 state를 읽어 SVG 반환
@@ -29,7 +31,7 @@ CLI에서 상태 변경
 
 ## 2. MVP 범위
 
-초기 구현에서는 장기 상태 3개만 다룬다.
+현재 구현에서는 장기 상태 3개만 다룬다.
 
 - `focus`
 - `break`
@@ -53,6 +55,14 @@ offline ───────┘
   "updatedAt": "2026-08-07T04:08:00Z"
 }
 ```
+
+### 구현 반영 요약
+
+- **유지:** `focus / break / offline` 상태 모델, 절대 UTC 관찰 시각, Private Vercel Blob 저장, 고정 SVG endpoint와 10분 원본 캐시 정책
+- **수정:** 초기 CLI 단일 진입점 전제를 CLI 또는 Desktop Tray 선택 구조로 확장
+- **추가:** Java 표준 `SystemTray` 기반 메뉴, 로컬 설정 저장, 마지막으로 성공한 Tray 상태 복원, API 실패 시 기존 표시 유지
+- **패키징:** Windows와 macOS에서 같은 Java 소스로 self-contained app image를 생성하며 최종 사용자는 Java/JDK를 별도로 설치하지 않음
+- **제외:** Linux Tray 패키징, 자동 시작·업데이트, 코드 서명·공증, CLI 등 다른 경로에서 변경된 상태의 Tray 자동 동기화
 
 ---
 
@@ -98,7 +108,7 @@ last observation  : 07 Aug 2026 · 04:08 UTC
 
 ```text
 A가 프로필 방문 → FOCUS + 해당 관찰의 UTC 시각 표시
-이후 CLI로 BREAK 변경
+이후 CLI 또는 Tray로 BREAK 변경
 B가 곧바로 방문 → 캐시가 유효하면 이전 FOCUS 기록이 표시될 수 있음
 캐시 만료 후 새 요청 → BREAK + 새 UTC 시각 표시
 A의 이미 열린 페이지 → 새로고침 전까지 이전 FOCUS 기록이 남아 있을 수 있음
@@ -528,7 +538,7 @@ frame 5  잠깐 정지
 이 프레임 애니메이션은 상태 갱신과 별개다.
 
 ```text
-상태 변경     : CLI → 외부 state 갱신
+상태 변경     : CLI 또는 Tray → 외부 state 갱신
 SVG 애니메이션: 반환된 SVG 내부 CSS/SMIL이 자체 반복
 ```
 
@@ -545,12 +555,9 @@ README는 한 번만 공개 SVG URL을 등록한다.
 이 URL 자체는 상태가 바뀌어도 유지된다.
 
 ```text
-CLI
- └─ dev-critter focus / break / offline
-        ↓
-   상태 변경 API
-        ↓
-   current state 저장
+CLI ───────┐
+           ├─ 상태 변경 API → current state 저장
+Tray ──────┘
 
 GitHub README
  └─ GET /specimen.svg
@@ -612,10 +619,10 @@ https://dev-critter.vercel.app
 전체 구조는 다음과 같다.
 
 ```text
-Local CLI
-    │
-    │ POST /api/status
-    ▼
+Local CLI ─────┐
+               ├─ POST /api/status
+Desktop Tray ──┘          │
+                          ▼
          Vercel
 ┌─────────────────────────┐
 │ 상태 변경 Function      │
@@ -633,7 +640,9 @@ Local CLI
 GitHub README
 ```
 
-상태 변경 시 로컬 CLI가 Vercel의 `POST /api/status` endpoint에 요청을 보내고, Function은 최신 관찰 상태를 Private Vercel Blob의 `state.json`에 저장한다.
+상태 변경 시 선택한 로컬 클라이언트가 Vercel의 `POST /api/status` endpoint에 요청을 보내고, Function은 최신 관찰 상태를 Private Vercel Blob의 `state.json`에 저장한다.
+
+CLI는 `DEV_CRITTER_URL`과 `STATUS_TOKEN`을 프로세스 환경에서 읽는다. Tray는 Settings 창에서 같은 두 값을 입력받아 Java Preferences에 로컬 저장한다. Tray는 API 요청이 성공한 경우에만 표시 상태와 로컬 복원 상태를 갱신한다.
 
 저장 데이터는 현재 상태와 마지막 변경 시각만 가진다.
 
@@ -719,4 +728,4 @@ A WILD BUG APPEARED!
 
 으로 서로 분리하는 방향을 고려한다.
 
-현재는 **장기 state 토글, 마지막 관찰 시각, 그에 따른 SVG 표현과 전달 구조**만 구현 대상으로 한다.
+현재는 **CLI 또는 Desktop Tray를 통한 장기 state 토글, 마지막 관찰 시각, 그에 따른 SVG 표현과 전달 구조**까지 구현되어 있다.

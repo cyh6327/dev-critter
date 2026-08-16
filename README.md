@@ -4,7 +4,9 @@
 
 Dev Critter turns a GitHub profile README into a small public workspace that reflects the developer's **most recently observed status**.
 
-Update your status from a local CLI:
+Choose either the local CLI or the optional Desktop Tray to update your status.
+
+CLI:
 
 ```bash
 dev-critter focus
@@ -12,10 +14,16 @@ dev-critter break
 dev-critter offline
 ```
 
+Desktop Tray:
+
+- choose `Focus`, `Break`, or `Offline` from the tray/menu bar;
+- configure the deployment URL and status token in `Settings...`;
+- keep the last successful Tray status across restarts.
+
 The current state is stored externally and rendered through a fixed SVG endpoint, so changing your status does **not** require committing or pushing changes to your GitHub profile repository.
 
 ```text
-Local CLI
+CLI or Desktop Tray
     ↓
 Status update API
     ↓
@@ -35,6 +43,8 @@ last observation  : 07 Aug 2026 · 04:08 UTC
 
 The status card is styled as a small specimen observation log featuring an ASCII critter, dry clinical notes, and state-specific observations.
 
+Both clients update the same remote state. The CLI is well suited for terminal and scripting workflows, while the Tray provides a persistent desktop control path on Windows and macOS. You can use either one independently or use both, but state changes made through another client are not automatically synchronized back to the Tray.
+
 ## Example
 
 <a href="https://github.com/cyh6327">
@@ -49,7 +59,99 @@ The display size can be adjusted with the `width` attribute to fit your README l
 
 Live usage example: [GitHub profile](https://github.com/cyh6327)
 
+## Quick start
+
+### 1. Prepare the Vercel project
+
+After cloning the repository, run these commands from the project root:
+
+```bash
+npm install
+npx vercel link
+```
+
+Create a **Private Vercel Blob** store in Vercel and connect it to the Dev Critter project.
+
+### 2. Register the status token and deploy to Production
+
+Generate a random `STATUS_TOKEN`:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Add the **same value** to Production and Development, pull the local environment, and deploy:
+
+```bash
+npx vercel env add STATUS_TOKEN production --sensitive
+npx vercel env add STATUS_TOKEN development
+npx vercel env pull .env.local
+npx vercel deploy --prod
+```
+
+After deployment, note your Production domain:
+
+```text
+https://YOUR-PROJECT.vercel.app
+```
+
+### 3. Choose a status client
+
+#### CLI
+
+Add the Production domain to `.env.local`:
+
+```env
+DEV_CRITTER_URL=https://YOUR-PROJECT.vercel.app
+```
+
+Build and run it:
+
+```bash
+npm run build:cli
+node --env-file=.env.local dist/src/cli.js focus
+```
+
+To use `dev-critter` from any directory, follow the detailed **CLI** setup below.
+
+#### Desktop Tray
+
+Windows:
+
+```powershell
+.\tray\package-windows.ps1
+```
+
+macOS:
+
+```bash
+bash tray/package-macos.sh
+```
+
+Launch the Tray, then enter these values in `Settings...`:
+
+```text
+Server URL   : https://YOUR-PROJECT.vercel.app
+Status token : YOUR_TOKEN
+```
+
+### 4. Add the card to your GitHub README
+
+```html
+<img
+  src="https://YOUR-PROJECT.vercel.app/specimen.svg"
+  width="350"
+  alt="developer status"
+>
+```
+
+Then change `focus`, `break`, or `offline` through the CLI or Tray.
+
+---
+
 ## Requirements
+
+Common self-hosting requirements:
 
 - Node.js 24.x and npm
 - A Vercel account
@@ -57,11 +159,21 @@ Live usage example: [GitHub profile](https://github.com/cyh6327)
 - A Private Vercel Blob store connected to the project
 
 Dev Critter uses Vercel OIDC authentication for Blob access.
-A separate `STATUS_TOKEN` is used to authorize status updates from the local CLI.
+A separate `STATUS_TOKEN` authorizes status updates from either client.
 
-## Setup
+Client-specific requirements:
 
-### 1. Install dependencies
+- **CLI:** Node.js 24.x and npm on the machine where the command runs
+- **Desktop Tray builder:** JDK 17 or later on the target operating system
+- **Desktop Tray end user:** no Java or JDK installation; the packaged app includes its runtime
+
+Self-contained Tray packages are supported for Windows and macOS.
+
+## Detailed setup
+
+### Vercel / Blob setup
+
+#### 1. Install dependencies
 
 ```bash
 npm install
@@ -69,7 +181,7 @@ npm install
 
 The Vercel CLI is installed as a project development dependency, so the commands below use `npx vercel` rather than requiring a global installation.
 
-### 2. Link the local project to Vercel
+#### 2. Link the local project to Vercel
 
 ```bash
 npx vercel link
@@ -77,7 +189,7 @@ npx vercel link
 
 Select the Vercel project that will host Dev Critter.
 
-### 3. Create and connect a Private Vercel Blob store
+#### 3. Create and connect a Private Vercel Blob store
 
 Create a **Private Vercel Blob** store in Vercel and connect it to the Dev Critter project.
 
@@ -85,9 +197,9 @@ Dev Critter uses Vercel's OIDC-based authentication for Blob access. A long-live
 
 When running locally, Vercel provides a temporary `VERCEL_OIDC_TOKEN` through the linked project environment. Do not create or commit this token manually.
 
-### 4. Generate a status token
+#### 4. Generate a status token
 
-`POST /api/status` is protected by a separate `STATUS_TOKEN` so that only an authorized local CLI can update the displayed status.
+`POST /api/status` is protected by a separate `STATUS_TOKEN` so that only an authorized CLI or Tray client can update the displayed status.
 
 Generate a random token:
 
@@ -97,7 +209,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Keep the generated value secret.
 
-### 5. Add `STATUS_TOKEN` to Vercel
+#### 5. Add `STATUS_TOKEN` to Vercel
 
 Add the generated token to the Production environment:
 
@@ -119,22 +231,15 @@ You can verify the configured variables with:
 npx vercel env ls
 ```
 
-### 6. Pull the local environment
+#### 6. Pull the local development environment
 
-Download the Development environment variables:
+Download the Development environment variables used for local development and verification:
 
 ```bash
 npx vercel env pull .env.local
 ```
 
-This creates a local `.env.local` containing the environment values required for development, including the Vercel-managed OIDC token and the configured `STATUS_TOKEN`.
-
-The CLI reads `STATUS_TOKEN` from its process environment and does not load `.env.local` automatically. For repository-local execution, load the file through Node.js:
-
-```bash
-npm run build:cli
-node --env-file=.env.local dist/src/cli.js focus
-```
+This stores the Development environment values configured in Vercel in a local `.env.local` file.
 
 Make sure `.env.local` is excluded from Git.
 
@@ -142,7 +247,7 @@ Make sure `.env.local` is excluded from Git.
 .env.local
 ```
 
-### 7. Deploy to Production
+#### 7. Deploy to Production
 
 Deploy the project to its Production environment:
 
@@ -156,49 +261,49 @@ Use the stable Production domain assigned to your project, for example:
 https://YOUR-PROJECT.vercel.app
 ```
 
-This domain will be used by both the local CLI and the GitHub README card.
+This domain will be used by the selected status client and the GitHub README card.
 
-### 8. Point the local CLI to your deployment
+### CLI
 
-When self-hosting, set `DEV_CRITTER_URL` to your own Production domain.
+The CLI and Desktop Tray update the same remote Dev Critter state:
 
-Add it to `.env.local`:
+```text
+POST https://YOUR-PROJECT.vercel.app/api/status
+```
+
+Choose the client that fits your workflow. They may also be used together, although the Tray does not automatically synchronize status changes made through the CLI or another client.
+
+The CLI can be used in two ways.
+
+**Run it from the repository**
+
+Add your Production domain to the `.env.local` file created earlier:
 
 ```env
 DEV_CRITTER_URL=https://YOUR-PROJECT.vercel.app
 ```
 
-Then build and run the CLI:
+Then explicitly load `.env.local` with Node.js `--env-file` when running the CLI:
 
 ```bash
 npm run build:cli
 node --env-file=.env.local dist/src/cli.js focus
 ```
 
-The CLI will send the status update to:
+Replace `focus` with `break` or `offline` as needed.
 
-```text
-POST https://YOUR-PROJECT.vercel.app/api/status
-```
+**Run it as a global command**
 
-You can replace `focus` with `break` or `offline`.
-
-### 9. Make `dev-critter` available as a command
-
-After confirming that the repository-local CLI works, build and link it so `dev-critter` can be used from any directory:
+To make `dev-critter` available from any directory, build and link it:
 
 ```bash
 npm run build:cli
 npm link
 ```
 
-`npm link` exposes the package's CLI command through your local npm installation.
+The global `dev-critter` command does not automatically read `.env.local`. Instead, it uses `STATUS_TOKEN` and `DEV_CRITTER_URL` from the process environment.
 
-The CLI also needs `STATUS_TOKEN` and `DEV_CRITTER_URL` in its process environment. Configure them once for your operating system.
-
-#### Windows (PowerShell)
-
-Store the variables for the current Windows user:
+Windows PowerShell:
 
 ```powershell
 [Environment]::SetEnvironmentVariable("STATUS_TOKEN", "YOUR_TOKEN", "User")
@@ -207,28 +312,14 @@ Store the variables for the current Windows user:
 
 Open a new terminal after setting them.
 
-#### macOS / Linux
-
-Add the variables to your shell profile so they are available in new terminal sessions.
-
-For the default macOS `zsh`, add these lines to `~/.zshrc`:
+macOS or Linux shell profile:
 
 ```bash
 export STATUS_TOKEN="YOUR_TOKEN"
 export DEV_CRITTER_URL="https://YOUR-PROJECT.vercel.app"
 ```
 
-Then reload the profile:
-
-```bash
-source ~/.zshrc
-```
-
-If you use Bash instead, place the same `export` lines in the appropriate Bash startup file for your environment.
-
-Do not commit your real `STATUS_TOKEN` or shell profile containing secrets to this repository.
-
-After configuration, the same commands work from any directory:
+After configuration, run:
 
 ```bash
 dev-critter focus
@@ -236,7 +327,40 @@ dev-critter break
 dev-critter offline
 ```
 
-### 10. Add the card to your GitHub README
+### Desktop Tray
+
+The Tray is implemented with the standard Java `SystemTray` API and has no external Tray dependency. Packages must be built on their target operating system.
+
+Windows PowerShell:
+
+```powershell
+.\tray\package-windows.ps1
+```
+
+The Windows app image is created at `tray/build/package/Dev Critter`. Run `Dev Critter.exe` from that directory.
+
+macOS:
+
+```bash
+bash tray/package-macos.sh
+```
+
+The macOS app image is created at `tray/build/package/Dev Critter.app`. The `Package macOS tray` GitHub Actions workflow also compiles and verifies the app image on `macos-latest`.
+
+Both app images include the required Java runtime, including HTTPS crypto support, so end users do not need Java or a JDK.
+
+After launching the Tray, open `Settings...` and enter:
+
+- **Server URL:** `https://YOUR-PROJECT.vercel.app`
+- **Status token:** the same `STATUS_TOKEN` configured in Vercel
+
+The settings are stored locally. A status selection updates the Tray only after the API request succeeds; authentication, network, and API failures keep the previous displayed status. The last successful Tray status is restored when the app starts again.
+
+The current packages are unsigned and not notarized. Linux packaging, automatic startup, automatic updates, and external status synchronization are outside the current scope.
+
+Never commit `.env.local`, a real `STATUS_TOKEN`, or any shell profile containing secrets.
+
+### GitHub README card
 
 Embed the Production SVG endpoint in your GitHub profile README:
 
@@ -248,7 +372,7 @@ Embed the Production SVG endpoint in your GitHub profile README:
 >
 ```
 
-The SVG URL stays the same when the status changes. The CLI updates only the externally stored state; the GitHub profile repository does not need a new commit for each status change.
+The SVG URL stays the same when the status changes. The selected client updates only the externally stored state; the GitHub profile repository does not need a new commit for each status change.
 
 GitHub may cache external images, so a newly updated status may not appear immediately in the README.
 
@@ -257,7 +381,7 @@ GitHub may cache external images, so a newly updated status may not appear immed
 Dev Critter requires the following authentication paths:
 
 ```text
-Local CLI
+CLI or Desktop Tray
     │
     │ STATUS_TOKEN
     ▼
@@ -270,9 +394,9 @@ Private Vercel Blob
 
 | Variable | Purpose | Managed by |
 |---|---|---|
-| `STATUS_TOKEN` | Authorizes status updates from the local CLI | User |
-| `DEV_CRITTER_URL` | API origin used by the CLI; set this to your own Production deployment when self-hosting | User |
+| `STATUS_TOKEN` | Authorizes status updates from the CLI or Desktop Tray | User |
+| `DEV_CRITTER_URL` | API origin used by the selected client; set this to your own Production deployment when self-hosting | User |
 | `VERCEL_OIDC_TOKEN` | Authenticates the Vercel project when accessing Blob | Vercel |
 
-`VERCEL_OIDC_TOKEN` is temporary and managed by Vercel.
+`VERCEL_OIDC_TOKEN` is temporary and managed by Vercel. The CLI reads the two user-managed values from its environment; the Tray stores them locally through `Settings...`.
 Never commit `.env.local` or any real token value to the repository.
