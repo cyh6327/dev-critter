@@ -1,13 +1,23 @@
 package dev.critter.tray;
 
 import java.awt.AWTException;
+import java.awt.Button;
 import java.awt.CheckboxMenuItem;
+import java.awt.Dialog;
 import java.awt.EventQueue;
+import java.awt.FlowLayout;
+import java.awt.Frame;
+import java.awt.GridLayout;
 import java.awt.Image;
+import java.awt.Label;
 import java.awt.MenuItem;
+import java.awt.Panel;
 import java.awt.PopupMenu;
 import java.awt.SystemTray;
+import java.awt.TextField;
 import java.awt.TrayIcon;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -22,6 +32,8 @@ import javax.imageio.ImageIO;
 
 public final class DevCritterTray {
     private static final String STATUS_PREFERENCE = "status";
+    private static final String API_URL_PREFERENCE = "DEV_CRITTER_URL";
+    private static final String STATUS_TOKEN_PREFERENCE = "STATUS_TOKEN";
     private static final Preferences PREFERENCES =
             Preferences.userNodeForPackage(DevCritterTray.class);
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
@@ -99,6 +111,10 @@ public final class DevCritterTray {
             }
 
             menu.addSeparator();
+            MenuItem settingsItem = new MenuItem("Settings...");
+            settingsItem.addActionListener(event -> showSettingsDialog());
+            menu.add(settingsItem);
+
             MenuItem exitItem = new MenuItem("Exit");
             exitItem.addActionListener(event -> {
                 SystemTray.getSystemTray().remove(trayIcon);
@@ -124,21 +140,21 @@ public final class DevCritterTray {
         setSelectedStatus(statusItems, selectedStatus);
         setOtherStatusItemsEnabled(statusItems, selectedStatus, false);
 
-        String apiUrl = System.getenv("DEV_CRITTER_URL");
-        if (apiUrl == null || apiUrl.isBlank()) {
+        String apiUrl = PREFERENCES.get(API_URL_PREFERENCE, "");
+        if (apiUrl.isBlank()) {
             failStatusUpdate(
                     trayIcon,
                     statusItems,
-                    "DEV_CRITTER_URL is not configured. Set DEV_CRITTER_URL to your deployment URL.");
+                    "Server URL is not configured. Open Settings to configure it.");
             return;
         }
 
-        String statusToken = System.getenv("STATUS_TOKEN");
-        if (statusToken == null || statusToken.isBlank()) {
+        String statusToken = PREFERENCES.get(STATUS_TOKEN_PREFERENCE, "");
+        if (statusToken.isBlank()) {
             failStatusUpdate(
                     trayIcon,
                     statusItems,
-                    "STATUS_TOKEN is not configured. Set STATUS_TOKEN before updating status.");
+                    "Status token is not configured. Open Settings to configure it.");
             return;
         }
 
@@ -156,7 +172,7 @@ public final class DevCritterTray {
             failStatusUpdate(
                     trayIcon,
                     statusItems,
-                    "DEV_CRITTER_URL is invalid. Set DEV_CRITTER_URL to a valid deployment URL.");
+                    "Server URL is invalid. Open Settings to configure a valid deployment URL.");
             return;
         }
 
@@ -166,12 +182,12 @@ public final class DevCritterTray {
                         failStatusUpdate(
                                 trayIcon,
                                 statusItems,
-                                "Could not connect to the configured DEV_CRITTER_URL.");
+                                "Could not connect to the configured Server URL.");
                     } else if (response.statusCode() == 401) {
                         failStatusUpdate(
                                 trayIcon,
                                 statusItems,
-                                "Authentication failed. Check STATUS_TOKEN.");
+                                "Authentication failed. Check Status token in Settings.");
                     } else if (response.statusCode() < 200 || response.statusCode() >= 300) {
                         failStatusUpdate(
                                 trayIcon,
@@ -182,6 +198,51 @@ public final class DevCritterTray {
                         finishStatusUpdate(statusItems);
                     }
                 }));
+    }
+
+    private static void showSettingsDialog() {
+        Dialog dialog = new Dialog((Frame) null, "Dev Critter Settings", true);
+        dialog.setLayout(new GridLayout(3, 1, 8, 8));
+
+        TextField apiUrlField = new TextField(
+                PREFERENCES.get(API_URL_PREFERENCE, ""), 32);
+        TextField statusTokenField = new TextField(
+                PREFERENCES.get(STATUS_TOKEN_PREFERENCE, ""), 32);
+        statusTokenField.setEchoChar('*');
+
+        Panel apiUrlRow = new Panel(new FlowLayout(FlowLayout.RIGHT));
+        apiUrlRow.add(new Label("Server URL"));
+        apiUrlRow.add(apiUrlField);
+        dialog.add(apiUrlRow);
+
+        Panel statusTokenRow = new Panel(new FlowLayout(FlowLayout.RIGHT));
+        statusTokenRow.add(new Label("Status token"));
+        statusTokenRow.add(statusTokenField);
+        dialog.add(statusTokenRow);
+
+        Panel actions = new Panel(new FlowLayout(FlowLayout.RIGHT));
+        Button cancelButton = new Button("Cancel");
+        cancelButton.addActionListener(event -> dialog.dispose());
+        actions.add(cancelButton);
+
+        Button saveButton = new Button("Save");
+        saveButton.addActionListener(event -> {
+            PREFERENCES.put(API_URL_PREFERENCE, apiUrlField.getText().trim());
+            PREFERENCES.put(STATUS_TOKEN_PREFERENCE, statusTokenField.getText().trim());
+            dialog.dispose();
+        });
+        actions.add(saveButton);
+        dialog.add(actions);
+
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent event) {
+                dialog.dispose();
+            }
+        });
+        dialog.pack();
+        dialog.setLocationRelativeTo(null);
+        dialog.setVisible(true);
     }
 
     private static void applyStatus(
