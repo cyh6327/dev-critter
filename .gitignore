@@ -1,5 +1,6 @@
 node_modules/
 dist/
+tray/build/
 
 preview/*
 !preview/focus-task-replication-preview.svg
