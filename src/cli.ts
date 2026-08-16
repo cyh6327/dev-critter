@@ -2,8 +2,6 @@
 
 import { isObservationState, isObservationStatus } from './state.js';
 
-const DEFAULT_API_URL = 'https://dev-critter.vercel.app';
-
 function fail(message: string): never {
   throw new Error(message);
 }
@@ -36,7 +34,12 @@ async function main(): Promise<void> {
     fail('STATUS_TOKEN is not configured.');
   }
 
-  const apiUrl = process.env.DEV_CRITTER_URL ?? DEFAULT_API_URL;
+  const apiUrl = process.env.DEV_CRITTER_URL;
+
+  if (!apiUrl) {
+    fail('DEV_CRITTER_URL is not configured. Set DEV_CRITTER_URL to your deployment URL.');
+  }
+
   const statusUrl = new URL('/api/status', apiUrl);
   let response: Response;
 
