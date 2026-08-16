@@ -1,6 +1,9 @@
 node_modules/
 dist/
-preview/
+
+preview/*
+!preview/focus-task-replication-preview.svg
+
 AGENTS.md
 AGENT-MEMORY.md
 DEVELOPMENT-NOTES.md
