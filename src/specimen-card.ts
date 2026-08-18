@@ -5,6 +5,11 @@ import type { SpecimenVariant } from './specimen/types.js';
 import { selectSpecimenVariant } from './specimen/variant-registry.js';
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+const statusColors: Record<ObservationState['status'], string> = {
+  focus: '#8B5CF6',
+  break: '#84B85C',
+  offline: '#94A3B8',
+};
 
 function formatObservationTime(timestamp: string): string {
   const date = new Date(timestamp);
@@ -40,6 +45,7 @@ export function renderSpecimenCardVariant(state: ObservationState, variant: Spec
   }
 
   const status = state.status.toUpperCase();
+  const statusColor = statusColors[state.status];
   const observedAt = formatObservationTime(state.updatedAt);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="870" viewBox="0 0 500 870" role="img" aria-labelledby="title description">
@@ -73,7 +79,7 @@ export function renderSpecimenCardVariant(state: ObservationState, variant: Spec
 
   /* 현재 상태는 중요한 시스템 값 */
   .status-value {
-    fill: #44E0EE;
+    fill: ${statusColor};
     font-weight: 700;
   }
 
@@ -160,7 +166,7 @@ export function renderSpecimenCardVariant(state: ObservationState, variant: Spec
 <text class="label" x="40" y="82">subject</text>
 <text class="body" x="195" y="82">: small coding organism</text>
 <text class="label" x="40" y="108">status</text>
-<text class="body status-value" x="195" y="108">: ${status}</text>
+<text class="body" x="195" y="108">: <tspan class="status-value">${status}</tspan></text>
 <text class="label" x="40" y="134">habitat</text>
 <text class="body" x="195" y="134">: local workstation</text>
 <text class="label" x="40" y="160">last observation</text>

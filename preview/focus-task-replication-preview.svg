@@ -29,7 +29,7 @@
 
   /* 현재 상태는 중요한 시스템 값 */
   .status-value {
-    fill: #44E0EE;
+    fill: #8B5CF6;
     font-weight: 700;
   }
 
@@ -116,7 +116,7 @@
 <text class="label" x="40" y="82">subject</text>
 <text class="body" x="195" y="82">: small coding organism</text>
 <text class="label" x="40" y="108">status</text>
-<text class="body status-value" x="195" y="108">: FOCUS</text>
+<text class="body" x="195" y="108">: <tspan class="status-value">FOCUS</tspan></text>
 <text class="label" x="40" y="134">habitat</text>
 <text class="body" x="195" y="134">: local workstation</text>
 <text class="label" x="40" y="160">last observation</text>

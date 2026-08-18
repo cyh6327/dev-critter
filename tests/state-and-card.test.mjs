@@ -40,7 +40,13 @@ test('observation state requires exactly status and updatedAt', () => {
   );
 });
 
-for (const status of ['focus', 'break', 'offline']) {
+const statusColors = {
+  focus: '#8B5CF6',
+  break: '#84B85C',
+  offline: '#94A3B8',
+};
+
+for (const [status, statusColor] of Object.entries(statusColors)) {
   test(`renders the complete animated ${status} specimen card`, () => {
     const svg = renderSpecimenCard({ status, updatedAt: '2026-08-15T03:04:05.123Z' });
 
@@ -50,6 +56,11 @@ for (const status of ['focus', 'break', 'offline']) {
     assert.match(svg, /<text class="heading" x="40" y="560">NOTE<\/text>/);
     assert.match(svg, /<text class="heading" x="40" y="702">OBSERVATION<\/text>/);
     assert.match(svg, /<animate attributeName="opacity"/);
+    assert.match(svg, new RegExp(`\\.status-value \\{\\s+fill: ${statusColor};`));
+    assert.match(
+      svg,
+      new RegExp(`<text class="body" x="195" y="108">: <tspan class="status-value">${status.toUpperCase()}<\\/tspan><\\/text>`),
+    );
   });
 }
 
