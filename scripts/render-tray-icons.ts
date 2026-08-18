@@ -1,8 +1,10 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import sharp from 'sharp';
 
 const SIZE = 128;
 const PREVIEW_SIZES = [16, 32] as const;
+const WINDOWS_ICON_SIZES = [16, 24, 32, 48, 64, 128, 256] as const;
+const MACOS_ICON_SIZES = [16, 32, 64, 128, 256, 512, 1024] as const;
 const BACKGROUND_INSET = 4;
 const CORNER_RADIUS = 18;
 const BORDER_WIDTH = 8;
@@ -16,6 +18,11 @@ const FONT_FAMILY =
   'Consolas, "Liberation Mono", "Courier New", monospace';
 
 const icons = {
+  app: {
+    lines: ['/\\_/\\', 'o.o'],
+    borderColor: '#44E0EE',
+    expressionColor: '#F5F5F5',
+  },
   focus: {
     lines: ['/\\_/\\', '■.■'],
     borderColor: '#8B5CF6',
@@ -106,10 +113,71 @@ function renderTraySvg(
 `.trim();
 }
 
+async function renderPng(icon: TrayIconDefinition, size: number): Promise<Buffer> {
+  return sharp(Buffer.from(renderTraySvg(icon, size))).png().toBuffer();
+}
+
+function createWindowsIcon(images: ReadonlyMap<number, Buffer>): Buffer {
+  const entries = [...images.entries()];
+  const directory = Buffer.alloc(6 + entries.length * 16);
+  directory.writeUInt16LE(0, 0);
+  directory.writeUInt16LE(1, 2);
+  directory.writeUInt16LE(entries.length, 4);
+
+  let imageOffset = directory.length;
+  entries.forEach(([size, image], index) => {
+    const entryOffset = 6 + index * 16;
+    directory.writeUInt8(size === 256 ? 0 : size, entryOffset);
+    directory.writeUInt8(size === 256 ? 0 : size, entryOffset + 1);
+    directory.writeUInt8(0, entryOffset + 2);
+    directory.writeUInt8(0, entryOffset + 3);
+    directory.writeUInt16LE(1, entryOffset + 4);
+    directory.writeUInt16LE(32, entryOffset + 6);
+    directory.writeUInt32LE(image.length, entryOffset + 8);
+    directory.writeUInt32LE(imageOffset, entryOffset + 12);
+    imageOffset += image.length;
+  });
+
+  return Buffer.concat([directory, ...entries.map(([, image]) => image)]);
+}
+
+function createMacOsIcon(images: ReadonlyMap<number, Buffer>): Buffer {
+  const iconTypes = new Map<number, string>([
+    [16, 'icp4'],
+    [32, 'icp5'],
+    [64, 'icp6'],
+    [128, 'ic07'],
+    [256, 'ic08'],
+    [512, 'ic09'],
+    [1024, 'ic10'],
+  ]);
+  const chunks = [...images.entries()].map(([size, image]) => {
+    const type = iconTypes.get(size);
+    if (type === undefined) {
+      throw new Error(`Missing macOS icon type for ${size}x${size}.`);
+    }
+
+    const header = Buffer.alloc(8);
+    header.write(type, 0, 'ascii');
+    header.writeUInt32BE(header.length + image.length, 4);
+    return Buffer.concat([header, image]);
+  });
+  const header = Buffer.alloc(8);
+  header.write('icns', 0, 'ascii');
+  header.writeUInt32BE(
+    header.length + chunks.reduce((total, chunk) => total + chunk.length, 0),
+    4,
+  );
+
+  return Buffer.concat([header, ...chunks]);
+}
+
 async function main() {
   const outputDir = 'preview/tray-icons';
+  const packageIconDir = 'tray/src/main/package';
 
   mkdirSync(outputDir, { recursive: true });
+  mkdirSync(packageIconDir, { recursive: true });
   for (const previewSize of PREVIEW_SIZES) {
     mkdirSync(`${outputDir}/${previewSize}x${previewSize}`, {
       recursive: true,
@@ -134,6 +202,25 @@ async function main() {
 
     console.log(`rendered: ${status} (128, 32, 16)`);
   }
+
+  const windowsImages = new Map<number, Buffer>();
+  for (const iconSize of WINDOWS_ICON_SIZES) {
+    windowsImages.set(iconSize, await renderPng(icons.app, iconSize));
+  }
+  writeFileSync(
+    `${packageIconDir}/dev-critter-app-icon.ico`,
+    createWindowsIcon(windowsImages),
+  );
+
+  const macOsImages = new Map<number, Buffer>();
+  for (const iconSize of MACOS_ICON_SIZES) {
+    macOsImages.set(iconSize, await renderPng(icons.app, iconSize));
+  }
+  writeFileSync(
+    `${packageIconDir}/dev-critter-app-icon.icns`,
+    createMacOsIcon(macOsImages),
+  );
+  console.log('rendered: app package icons (Windows, macOS)');
 }
 
 await main();

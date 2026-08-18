@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $trayRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sourceFile = Join-Path $trayRoot "src\main\java\dev\critter\tray\DevCritterTray.java"
 $resourcesDir = Join-Path $trayRoot "src\main\resources"
+$iconFile = Join-Path $trayRoot "src\main\package\dev-critter-app-icon.ico"
 $buildRoot = Join-Path $trayRoot "build"
 $classesDir = Join-Path $buildRoot "package-classes"
 $inputDir = Join-Path $buildRoot "package-input"
@@ -30,6 +31,7 @@ jpackage `
     --input $inputDir `
     --main-jar "dev-critter-tray.jar" `
     --main-class dev.critter.tray.DevCritterTray `
+    --icon $iconFile `
     --add-modules "java.desktop,java.net.http,java.prefs,jdk.crypto.ec"
 if ($LASTEXITCODE -ne 0) {
     throw "jpackage failed."

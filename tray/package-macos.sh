@@ -4,6 +4,7 @@ set -euo pipefail
 TRAY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_FILE="$TRAY_ROOT/src/main/java/dev/critter/tray/DevCritterTray.java"
 RESOURCES_DIR="$TRAY_ROOT/src/main/resources"
+ICON_FILE="$TRAY_ROOT/src/main/package/dev-critter-app-icon.icns"
 BUILD_ROOT="$TRAY_ROOT/build"
 CLASSES_DIR="$BUILD_ROOT/package-classes"
 INPUT_DIR="$BUILD_ROOT/package-input"
@@ -27,6 +28,7 @@ jpackage \
   --input "$INPUT_DIR" \
   --main-jar "dev-critter-tray.jar" \
   --main-class dev.critter.tray.DevCritterTray \
+  --icon "$ICON_FILE" \
   --add-modules "java.desktop,java.net.http,java.prefs,jdk.crypto.ec"
 
 APP_IMAGE="$PACKAGE_DIR/Dev Critter.app"
